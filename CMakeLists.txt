@@ -27,8 +27,26 @@ find_package(Doxygen)
 option(WITH_DOCS "Create and install internal documentation (needs Doxygen)" ${DOXYGEN_FOUND})
 option(BUILD_SHARED_LIBS "By default, shared libs are enabled. Turn off for a static build." ON)
 
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(LIBYANG REQUIRED libyang>=2.1.140 IMPORTED_TARGET)
+if (WIN32)
+    message(STATUS "Windows compilation: using dynamic yang dll")
+    if (NOT LIBYANG_INCLUDE_DIR)
+        message(SEND_ERROR "Missing variable: LIBYANG_INCLUDE_DIR, necesary for Windows compilation")
+    endif ()
+    if (NOT LIBYANG_DLL_PATH)
+        message(SEND_ERROR "Missing variable: LIBYANG_DLL_PATH, necesary for Windows compilation")
+    endif()
+    add_library(libyang SHARED IMPORTED GLOBAL)
+    set_target_properties(libyang PROPERTIES
+      INTERFACE_INCLUDE_DIRECTORIES "${LIBYANG_INCLUDE_DIR};${CMAKE_INSTALL_PREFIX}/include"
+      IMPORTED_IMPLIB "E:/AlexisLapierre/libyang_install/lib/yang.dll"
+    )
+    set(LIBYANG_NAME libyang)
+elseif (UNIX)
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(LIBYANG REQUIRED libyang>=2.1.140 IMPORTED_TARGET)
+    set(LIBYANG_NAME PkgConfig::LIBYANG)
+endif ()
+
 set(LIBYANG_CPP_PKG_VERSION "1.1.0")
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
@@ -60,7 +78,7 @@ add_library(yang-cpp
     src/utils/newPath.cpp
     )
 
-target_link_libraries(yang-cpp PRIVATE PkgConfig::LIBYANG)
+target_link_libraries(yang-cpp PRIVATE ${LIBYANG_NAME})
 
 include(GenerateExportHeader)
 generate_export_header(yang-cpp BASE_NAME libyang_cpp EXPORT_FILE_NAME libyang-cpp/export.h)
